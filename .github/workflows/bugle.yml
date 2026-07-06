@@ -2,31 +2,39 @@ name: The Berno Bugle
 
 on:
   schedule:
-    - cron: "45 9 * * *"   # 9:45 UTC = 5:45am EDT (4:45 in winter — very Franklin)
-  workflow_dispatch:        # the "Run workflow" button
+    - cron: "45 9 * * *"    # 5:45am EDT — the real run
+    - cron: "45 10 * * *"   # backup — fires only if the first didn't print
+  workflow_dispatch:         # the "Run workflow" button — always prints
 
 permissions:
   contents: write
 
 jobs:
-  print:
+  publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+      - name: Check the docket
+        id: check
+        run: |
+          echo "edition=$(TZ=America/New_York date +'%A, %B %-d, %Y')" >> "$GITHUB_OUTPUT"
+          echo "stamp=$(TZ=America/New_York date +%F)" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "schedule" ] && \
+             [ -f "archive/bugle_$(TZ=America/New_York date +%F).png" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Install the pressroom
+        if: steps.check.outputs.skip != 'true'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 \
-            poppler-utils imagemagick
-          pip install -r requirements.txt
+          sudo apt-get update -q
+          sudo apt-get install -y -q poppler-utils imagemagick \
+            libpango-1.0-0 libpangocairo-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0
+          pip install -q -r requirements.txt
 
-      - name: Print the edition
+      - name: Print today's edition
+        if: steps.check.outputs.skip != 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           BUGLE_ICS_URL: ${{ secrets.BUGLE_ICS_URL }}
@@ -35,10 +43,28 @@ jobs:
           mkdir -p archive
           python bugle_action.py
 
-      - name: Deliver to the doorstep
+      - name: Deliver to the wall
+        if: steps.check.outputs.skip != 'true'
         run: |
           git config user.name "The Berno Bugle"
           git config user.email "bugle@users.noreply.github.com"
           git add latest.png archive/
-          git diff --staged --quiet || git commit -m "Edition of $(date +'%Y-%m-%d')"
+          git commit -m "Edition $(date +%Y-%m-%d)" || echo "Nothing new to print"
           git push
+
+      - name: Deliver to the inbox
+        if: steps.check.outputs.skip != 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.GMAIL_ADDRESS }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          from: The Berno Bugle
+          to: ${{ secrets.GMAIL_ADDRESS }}
+          subject: "The Berno Bugle — ${{ steps.check.outputs.edition }}"
+          html_body: >
+            <img src="https://USERNAME.github.io/berno-bugle/archive/bugle_${{ steps.check.outputs.stamp }}.png"
+                 width="936" style="max-width:100%" alt="The Berno Bugle">
+          attachments: latest.png
