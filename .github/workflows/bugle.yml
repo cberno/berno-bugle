@@ -1,0 +1,44 @@
+name: The Berno Bugle
+
+on:
+  schedule:
+    - cron: "45 9 * * *"   # 9:45 UTC = 5:45am EDT (4:45 in winter — very Franklin)
+  workflow_dispatch:        # the "Run workflow" button
+
+permissions:
+  contents: write
+
+jobs:
+  print:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the pressroom
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 \
+            poppler-utils imagemagick
+          pip install -r requirements.txt
+
+      - name: Print the edition
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          BUGLE_ICS_URL: ${{ secrets.BUGLE_ICS_URL }}
+          BUGLE_BIRTHDAYS_ICS_URL: ${{ secrets.BUGLE_BIRTHDAYS_ICS_URL }}
+        run: |
+          mkdir -p archive
+          python bugle_action.py
+
+      - name: Deliver to the doorstep
+        run: |
+          git config user.name "The Berno Bugle"
+          git config user.email "bugle@users.noreply.github.com"
+          git add latest.png archive/
+          git diff --staged --quiet || git commit -m "Edition of $(date +'%Y-%m-%d')"
+          git push
