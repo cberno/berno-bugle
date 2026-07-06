@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: 'Playfair'; src: url('fonts/Playfair.ttf'); }
+  @font-face { font-family: 'Garamond'; src: url('fonts/EBGaramond.ttf'); }
+  @font-face { font-family: 'Garamond'; font-style: italic; src: url('fonts/EBGaramondItalic.ttf'); }
+
+  @page { size: 1872px 1404px; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1872px; height: 1404px; padding: 44px 56px 30px 56px;
+    font-family: 'Garamond', serif; font-size: 27px; color: #000; line-height: 1.3;
+    background: #fff;
+  }
+
+  /* ---- masthead ---- */
+  .masthead { text-align: center; }
+  .masthead h1 {
+    font-family: 'Playfair', serif; font-weight: 700; font-size: 84px;
+    letter-spacing: 0.13em; text-transform: uppercase; line-height: 1;
+  }
+  .masthead h1 .lead { font-size: 100px; }
+  .dateline {
+    border-top: 5px solid #000; border-bottom: 2px solid #000;
+    margin-top: 16px; padding: 8px 0;
+    font-size: 22px; letter-spacing: 0.28em; text-transform: uppercase; text-align: center;
+  }
+
+  /* ---- morning line strip ---- */
+  .morning { text-align: center; padding: 18px 120px 16px; border-bottom: 2px solid #000; }
+  .morning .q { font-style: italic; font-size: 32px; }
+  .morning .attr { font-size: 22px; letter-spacing: 0.08em; }
+
+  /* ---- main grid ---- */
+  .main { display: flex; gap: 40px; margin-top: 22px; }
+  .left { flex: 0 0 560px; }
+  .right { flex: 1; border-left: 2px solid #000; padding-left: 40px; }
+
+  .sec-head {
+    font-family: 'Playfair', serif; font-weight: 700; font-size: 28px;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    border-bottom: 4px solid #000; padding-bottom: 5px; margin-bottom: 12px;
+  }
+  .kicker { font-weight: 700; font-size: 27px; }
+  .fine { font-size: 21px; }
+
+  /* weather grade box */
+  .gradebox { border: 4px solid #000; padding: 16px 20px; display: flex; align-items: center; margin-bottom: 14px; }
+  .grade {
+    border: 3px solid #000; width: 104px; height: 104px; flex: 0 0 104px;
+    font-family: 'Playfair', serif; font-weight: 700; font-size: 54px;
+    display: flex; align-items: center; justify-content: center; margin-right: 22px;
+  }
+  .gradetext .kicker { font-size: 29px; line-height: 1.2; }
+  .gradetext p { font-size: 23px; margin-top: 4px; }
+
+  table.wx { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  table.wx th {
+    font-size: 19px; letter-spacing: 0.14em; text-transform: uppercase;
+    text-align: left; font-weight: 400; border-bottom: 2px solid #000; padding: 4px 4px;
+  }
+  table.wx td { font-size: 24px; padding: 7px 4px; border-bottom: 1px dotted #000; }
+  table.wx td.temp { font-weight: 700; }
+
+  .bday { margin-top: 22px; border: 3px double #000; padding: 12px 16px; }
+  .bday .sec-head { border-bottom: none; margin-bottom: 4px; font-size: 24px; }
+  .bday p { font-size: 26px; }
+
+  /* headlines: three stacked desks */
+  .desk { margin-bottom: 8px; }
+  .desk-head {
+    font-size: 22px; letter-spacing: 0.24em; text-transform: uppercase; font-weight: 700;
+    border-bottom: 2px solid #000; padding-bottom: 3px; margin-bottom: 6px;
+  }
+  .hl { padding: 7px 0; border-bottom: 1px dotted #000; font-size: 25px; line-height: 1.32; }
+  .hl:last-child { border-bottom: none; margin-bottom: 6px; }
+  .hl b { font-size: 26px; }
+
+  /* footer band */
+  .band { display: flex; gap: 40px; border-top: 5px solid #000; margin-top: 10px; padding-top: 16px; }
+  .band .cell { flex: 1.6; }
+  .band .cell + .cell { flex: 1; border-left: 2px solid #000; padding-left: 40px; }
+  .cell-head {
+    font-family: 'Playfair', serif; font-weight: 700; font-size: 26px;
+    letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 8px;
+  }
+  .cell p { font-size: 26px; line-height: 1.35; }
+  .teddy { font-size: 30px !important; }
+
+  .colophon {
+    position: absolute; bottom: 26px; left: 0; right: 0;
+    font-family: 'Garamond', serif; font-style: italic;
+    font-size: 24px; letter-spacing: 0.06em; text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <h1><span class="lead">T</span>he <span class="lead">B</span>erno <span class="lead">B</span>ugle</h1>
+  <div class="dateline">{{ date_line }} · Chevy Chase Edition · Vol. {{ volume }}</div>
+</div>
+
+<div class="morning">
+  <div class="q">&ldquo;{{ quote.text }}&rdquo;</div>
+  <div class="attr">— {{ quote.attr }}</div>
+</div>
+
+<div class="main">
+  <div class="left">
+    <div class="sec-head">Weather / Rain</div>
+    <div class="gradebox">
+      <div class="grade">{{ weather.grade }}</div>
+      <div class="gradetext">
+        <div class="kicker">{{ weather.verdict }}</div>
+        <p>{{ weather.editorial }}</p>
+      </div>
+    </div>
+    <p class="fine">High {{ weather.high }}° · low {{ weather.low }}° · max rain {{ weather.max_rain }}% · sunrise {{ weather.sunrise }} · sunset {{ weather.sunset }}</p>
+    <table class="wx">
+      <tr><th>Time</th><th>Temp</th><th>Rain</th><th>Sky</th></tr>
+      {% for r in weather.hours %}
+      <tr><td>{{ r.time }}</td><td class="temp">{{ r.temp }}° / {{ r.feels }}°</td><td>{{ r.rain }}%</td><td>{{ r.sky }}</td></tr>
+      {% endfor %}
+    </table>
+    {% if birthdays %}
+    <div class="bday">
+      <div class="sec-head">Birthdays</div>
+      {% for b in birthdays %}<p>&#127874; {{ b }}</p>{% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="right">
+    <div class="sec-head">Headlines</div>
+    <div class="desk">
+      <div class="desk-head">The District</div>
+      {% for h in headlines.dc %}<div class="hl"><b>{{ h.head }}</b> — {{ h.line }}</div>{% endfor %}
+    </div>
+    <div class="desk">
+      <div class="desk-head">America</div>
+      {% for h in headlines.america %}<div class="hl"><b>{{ h.head }}</b> — {{ h.line }}</div>{% endfor %}
+    </div>
+    <div class="desk">
+      <div class="desk-head">World</div>
+      {% for h in headlines.world %}<div class="hl"><b>{{ h.head }}</b> — {{ h.line }}</div>{% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="band">
+  <div class="cell">
+    <div class="cell-head">This Day in History</div>
+    <p>{{ long_view }}</p>
+  </div>
+  <div class="cell">
+    <div class="cell-head">Teddy&rsquo;s Corner</div>
+    <p class="teddy">{{ teddy }}</p>
+  </div>
+</div>
+
+<div class="colophon">Do something you will be proud of today.</div>
+
+</body>
+</html>
