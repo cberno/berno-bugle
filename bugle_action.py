@@ -10,9 +10,12 @@ Secrets (Settings > Secrets and variables > Actions):
   ANTHROPIC_API_KEY        required
   BUGLE_ICS_URL            required — Google Calendar secret .ics address
   BUGLE_BIRTHDAYS_ICS_URL  optional — the Birthdays calendar's secret .ics
+  EBIRD_API_KEY            optional — free key from ebird.org/api/keygen;
+                           powers the Grounds Report's real bird sightings
 """
 
 import json, os, subprocess, sys, datetime as dt
+from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
@@ -23,17 +26,46 @@ from weasyprint import HTML
 
 HERE = Path(__file__).parent
 TZ = ZoneInfo("America/New_York")
-LAT, LON = 38.96, -77.08                       # Chevy Chase DC
+LAT, LON = 38.96, -77.08                       # Chevy Chase DC (zip 20015)
 LAUNCH = dt.date(2026, 7, 1)                   # Vol. I
 MODEL = "claude-sonnet-4-6"
 API_KEY = os.environ["ANTHROPIC_API_KEY"]
 ICS_URL = os.environ.get("BUGLE_ICS_URL", "")
 BDAY_ICS_URL = os.environ.get("BUGLE_BIRTHDAYS_ICS_URL", "")
+EBIRD_KEY = os.environ.get("EBIRD_API_KEY", "")
+UA = {"User-Agent": "BernoBugle/1.0 (github.com/cberno/berno-bugle)"}
+
+# Each desk pulls several feeds. A dead feed is reported in the paper,
+# never papered over. District feeds are ordered most-local-first.
 FEEDS = {
-    "dc": "https://wtop.com/feed/",
-    "america": "https://feeds.npr.org/1001/rss.xml",
-    "world": "http://feeds.bbci.co.uk/news/world/rss.xml",
+    "dc": [
+        "https://www.popville.com/feed/",
+        "https://www.foresthillsconnection.com/feed/",
+        "https://wtop.com/feed/",
+    ],
+    "america": [
+        "https://feeds.npr.org/1001/rss.xml",
+        "https://www.pbs.org/newshour/feed/",
+    ],
+    "world": [
+        "http://feeds.bbci.co.uk/news/world/rss.xml",
+        "https://www.theguardian.com/world/rss",
+    ],
 }
+
+# The grounds: what actually grows and lives at the house. This is what
+# makes the Grounds Report ours instead of a generic almanac.
+MANIFEST = dict(
+    pond=("water feature with Mini Mali dwarf hardy waterlilies in the "
+          "fountain; purple flag iris, common rush, and Suwanee grass in "
+          "the bog-filter planters"),
+    beds=("Chindo viburnums, hydrangeas, blueberry bushes, a lilac, compact "
+          "hollies, Steeds Japanese hollies, variegated liriope, purple "
+          "catmint, dwarf globe cryptomeria"),
+    trees="a weeping cherry",
+    lawn="tall fescue",
+    feeders="",
+)
 
 NOW = dt.datetime.now(TZ)
 DATE_LINE = NOW.strftime("%A, %B %-d, %Y")
@@ -72,6 +104,18 @@ def get_weather():
                 sunrise=d["sunrise"][0][11:16], sunset=d["sunset"][0][11:16],
                 hours=hours)
 
+def get_alerts():
+    """Active NWS alerts for the house — the government's words, not vibes."""
+    try:
+        r = requests.get("https://api.weather.gov/alerts/active",
+                         params=dict(point=f"{LAT},{LON}"),
+                         headers=UA, timeout=20).json()
+        return [dict(event=f["properties"].get("event", ""),
+                     headline=f["properties"].get("headline", ""))
+                for f in r.get("features", [])][:3]
+    except Exception:
+        return []
+
 def ics_events(url):
     if not url: return []
     try:
@@ -100,16 +144,53 @@ def get_birthdays():
 
 def get_headlines():
     raw = {}
-    for desk, url in FEEDS.items():
-        try:
-            raw[desk] = [dict(title=e.title, summary=getattr(e, "summary", "")[:200])
-                         for e in feedparser.parse(url).entries[:12]]
-        except Exception:
-            raw[desk] = []
+    for desk, urls in FEEDS.items():
+        items, failed = [], []
+        for url in urls:
+            name = urlparse(url).netloc.replace("www.", "")
+            try:
+                entries = feedparser.parse(url).entries[:8]
+                if not entries:
+                    failed.append(name); continue
+                items += [dict(source=name, title=e.title,
+                               summary=getattr(e, "summary", "")[:200])
+                          for e in entries]
+            except Exception:
+                failed.append(name)
+        raw[desk] = dict(items=items, failed=failed)
     return raw
 
+def get_history():
+    """Wikipedia's on-this-day events — the editor picks, never invents."""
+    try:
+        r = requests.get("https://en.wikipedia.org/api/rest_v1/feed/onthisday/"
+                         f"events/{NOW:%m/%d}", headers=UA, timeout=20).json()
+        return [dict(year=e.get("year"), text=e.get("text", ""))
+                for e in r.get("events", [])][:25]
+    except Exception:
+        return []
+
+def get_birds():
+    """Species actually reported to eBird within ~5 miles this past week."""
+    if not EBIRD_KEY:
+        return []
+    try:
+        r = requests.get("https://api.ebird.org/v2/data/obs/geo/recent",
+                         params=dict(lat=LAT, lng=LON, dist=8, back=7,
+                                     maxResults=100),
+                         headers={"X-eBirdApiToken": EBIRD_KEY},
+                         timeout=20).json()
+        seen = []
+        for o in r:
+            n = o.get("comName")
+            if n and n not in seen:
+                seen.append(n)
+        return seen[:20]
+    except Exception:
+        return []
+
 # ---------------- the editor ----------------
-def ask_claude(weather, raw_headlines, birthdays):
+def ask_claude(weather, alerts, raw_headlines, birthdays, history, birds):
     prompt = f"""You are the editor of The Berno Bugle, a one-screen wall newspaper
 for the Berno family in Chevy Chase, Washington DC: Charley (long-horizon value
 investor and essayist), Leah, small son Teddy, dog Tucker. Voice: dry, warm,
@@ -118,23 +199,42 @@ supported by the raw inputs below or be genuinely well-established history.
 
 Today is {DATE_LINE}.
 WEATHER: {json.dumps(weather)}
-RAW HEADLINES: {json.dumps(raw_headlines)}
+ACTIVE NWS ALERTS (official; may be empty): {json.dumps(alerts)}
+RAW HEADLINES BY DESK (items tagged by source; 'failed' lists dead feeds): {json.dumps(raw_headlines)}
 BIRTHDAYS TODAY: {json.dumps(birthdays)}
+ON THIS DATE per Wikipedia (choose from these ONLY): {json.dumps(history)}
+BIRDS reported to eBird within ~5 miles this past week (real sightings; may be empty): {json.dumps(birds)}
+THE GROUNDS at the family's house (may be sparse): {json.dumps(MANIFEST)}
 
 Return ONLY a JSON object, no markdown fences:
 - quote: {{text, attr}} — PUBLIC DOMAIN only (scripture, Aurelius, Seneca,
   Kierkegaard, Thoreau, founders' letters), under 20 words, fitting the day
 - weather: {{grade, verdict, editorial}} — grade the DAY'S USABILITY A-F for a
   family with a garden, a dog, and a small son (A glorious, F stay in);
-  verdict is a short punchy line; editorial one practical sentence
+  verdict is a short punchy line; editorial one practical sentence. If NWS
+  alerts exist, fold their substance into verdict or editorial using the
+  official facts (event name, timing) — do not soften or embellish them.
 - headlines: {{dc: [{{head, line}} x2], america: [...x2], world: [...x2]}} —
-  curate from the matching raw feeds (dc desk from the DC feed); bold 2-4 word
-  head + one plain sentence rewritten in your own words. Prioritize signal:
-  local DC, markets/banking/small business, institutions. One wildcard allowed.
-- long_view: 2-3 sentences on something from this exact date in history,
-  biased toward institutions, builders, and ideas that lasted; end with the
-  lesson, lightly
+  bold 2-4 word head + one plain sentence rewritten in your own words; use
+  only that desk's items. THE DISTRICT: strongly prefer stories about upper-NW
+  neighborhoods (Tenleytown, Chevy Chase DC, Friendship Heights, AU Park,
+  Cleveland Park, Van Ness) or citywide stories that touch daily life there;
+  popville.com and foresthillsconnection.com items outrank wire copy when
+  they carry real news. AMERICA / WORLD: prioritize signal — markets, banking,
+  small business, institutions; one wildcard allowed across the paper. If a
+  desk's items are empty, output exactly one entry for it: head "Wire down",
+  line plainly naming the failed feeds.
+- long_view: pick ONE event from ON THIS DATE — bias institutions, builders,
+  and ideas that lasted; 2-3 sentences; end with the lesson, lightly. Never
+  use an event that is not on the list.
 - teddy: one delightful true fact for a small boy, one sentence
+- grounds: a naturalist's two-sentence pulse (three only when the season
+  insists) on the yard and the neighborhood's green places: what to watch
+  for, what should be blooming or fading, which of the listed birds might
+  turn up at the feeders or overhead. Ground every claim in the date, today's
+  weather, the daylight, the BIRDS list, and THE GROUNDS. Expectation
+  language only ("watch for", "should open") — never claim something was
+  observed at the house. Never chores, never a to-do list.
 """
     last_err = None
     for attempt in range(3):  # one bad response must not kill the edition
@@ -142,7 +242,7 @@ Return ONLY a JSON object, no markdown fences:
             r = requests.post("https://api.anthropic.com/v1/messages",
                 headers={"x-api-key": API_KEY, "anthropic-version": "2023-06-01",
                          "content-type": "application/json"},
-                json=dict(model=MODEL, max_tokens=1800,
+                json=dict(model=MODEL, max_tokens=2200,
                           messages=[dict(role="user", content=prompt)]), timeout=180)
             r.raise_for_status()
             text = "".join(b["text"] for b in r.json()["content"] if b["type"] == "text")
@@ -156,13 +256,14 @@ Return ONLY a JSON object, no markdown fences:
 def main():
     weather = get_weather()
     birthdays = get_birthdays()
-    ed = ask_claude(weather, get_headlines(), birthdays)
+    ed = ask_claude(weather, get_alerts(), get_headlines(), birthdays,
+                    get_history(), get_birds())
 
     weather.update(ed["weather"])
     data = dict(date_line=DATE_LINE, volume=roman(VOLUME), quote=ed["quote"],
                 weather=weather, birthdays=birthdays,
                 headlines=ed["headlines"], long_view=ed["long_view"],
-                teddy=ed["teddy"])
+                teddy=ed["teddy"], grounds=ed.get("grounds", ""))
 
     env = Environment(loader=FileSystemLoader(str(HERE)))
     html = env.get_template("trmnl_template.html").render(**data)
