@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 The Berno Bugle — GitHub Actions edition.
 Runs on GitHub's servers every morning. No desktop app, no Pi, no excuses.
