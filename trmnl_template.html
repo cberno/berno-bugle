@@ -68,6 +68,11 @@
   .bday .sec-head { border-bottom: none; margin-bottom: 4px; font-size: 24px; }
   .bday p { font-size: 26px; }
 
+  /* grounds report */
+  .grounds { margin-top: 22px; }
+  .grounds .sec-head { font-size: 24px; border-bottom: 2px solid #000; }
+  .grounds p { font-size: 25px; line-height: 1.35; }
+
   /* headlines: three stacked desks */
   .desk { margin-bottom: 8px; }
   .desk-head {
@@ -129,6 +134,12 @@
     <div class="bday">
       <div class="sec-head">Birthdays</div>
       {% for b in birthdays %}<p>&#127874; {{ b }}</p>{% endfor %}
+    </div>
+    {% endif %}
+    {% if grounds %}
+    <div class="grounds">
+      <div class="sec-head">Grounds Report</div>
+      <p>{{ grounds }}</p>
     </div>
     {% endif %}
   </div>
