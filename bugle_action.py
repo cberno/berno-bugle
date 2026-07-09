@@ -248,3 +248,53 @@ and grounds must be PLAIN STRINGS, never nested objects:
 """
     last_err = None
     for attempt in range(3):  # one bad response must not kill the edition
+        try:
+          r = requests.post("https://api.anthropic.com/v1/messages",
+                headers={"x-api-key": API_KEY, "anthropic-version": "2023-06-01",
+                         "content-type": "application/json"},
+                json=dict(model=MODEL, max_tokens=2200,
+                          messages=[dict(role="user", content=prompt)]), timeout=180)
+            r.raise_for_status()
+            text = "".join(b["text"] for b in r.json()["content"] if b["type"] == "text")
+            return json.loads(text.strip().removeprefix("```json").removesuffix("```").strip())
+        except Exception as e:
+            last_err = e
+            print(f"Editor flubbed attempt {attempt + 1}: {e}")
+    raise last_err
+
+# ---------------- press ----------------
+def main():
+    weather = get_weather()
+    birthdays = get_birthdays()
+    ed = ask_claude(weather, get_alerts(), get_headlines(), birthdays,
+                    get_history(), get_birds())
+
+    weather.update(ed["weather"])
+    for k in ("grade", "verdict", "editorial"):
+        weather[k] = flat(weather.get(k))
+    quote = ed["quote"]
+    if not isinstance(quote, dict):
+        quote = dict(text=flat(quote), attr="")
+    data = dict(date_line=DATE_LINE, volume=roman(VOLUME), quote=quote,
+                weather=weather, birthdays=birthdays,
+                headlines=ed["headlines"], long_view=flat(ed["long_view"]),
+                teddy=flat(ed["teddy"]), grounds=flat(ed.get("grounds", "")))
+
+    env = Environment(loader=FileSystemLoader(str(HERE)))
+    html = env.get_template("trmnl_template.html").render(**data)
+    HTML(string=html, base_url=str(HERE)).write_pdf(str(HERE / "bugle.pdf"))
+    subprocess.run(["pdftoppm", "-png", "-r", "96", "-gray", "-singlefile",
+                    "bugle.pdf", "latest"], check=True, cwd=HERE)
+
+    # verify the one-screen contract before shipping
+    dims = subprocess.run(["identify", "-format", "%wx%h", "latest.png"],
+                          capture_output=True, text=True, cwd=HERE).stdout
+    assert dims == "1872x1404", f"Render broke the contract: {dims}"
+
+    archive = HERE / "archive" / f"bugle_{NOW:%Y-%m-%d}.png"
+    archive.write_bytes((HERE / "latest.png").read_bytes())
+    (HERE / "bugle.pdf").unlink()
+    print(f"Edition No. {VOLUME} ({dims}) ready.")
+
+if __name__ == "__main__":
+    sys.exit(main())
