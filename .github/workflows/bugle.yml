@@ -1,9 +1,7 @@
-"""
-The Berno Bugle — GitHub Actions edition.
-Runs on GitHub's servers every morning. No desktop app, no Pi, no excuses.
+# The Berno Bugle - Runs on GitHub's servers every morning
 
 Pipeline: fetch real data -> Claude writes the editorial layer -> render
-1872x1404 grayscale PNG -> the workflow commits it as latest.png.
+# 1872x1404 grayscale PNG -> the workflow commits it as latest.png.
 
 Secrets (Settings > Secrets and variables > Actions):
   ANTHROPIC_API_KEY        required
@@ -11,7 +9,6 @@ Secrets (Settings > Secrets and variables > Actions):
   BUGLE_BIRTHDAYS_ICS_URL  optional — the Birthdays calendar's secret .ics
   EBIRD_API_KEY            optional — free key from ebird.org/api/keygen;
                            powers the Grounds Report's real bird sightings
-"""
 
 import json, os, subprocess, sys, datetime as dt
 from urllib.parse import urlparse
