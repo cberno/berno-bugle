@@ -249,7 +249,7 @@ and grounds must be PLAIN STRINGS, never nested objects:
     last_err = None
     for attempt in range(3):  # one bad response must not kill the edition
         try:
-          r = requests.post("https://api.anthropic.com/v1/messages",
+            r = requests.post("https://api.anthropic.com/v1/messages",
                 headers={"x-api-key": API_KEY, "anthropic-version": "2023-06-01",
                          "content-type": "application/json"},
                 json=dict(model=MODEL, max_tokens=2200,
