@@ -190,6 +190,13 @@ def get_birds():
         return []
 
 # ---------------- the editor ----------------
+def flat(v):
+    """The editor sometimes wraps prose in {'text': ...}; unwrap to a string."""
+    if isinstance(v, dict):
+        v = v.get("text") or next((x for x in v.values()
+                                   if isinstance(x, str)), "")
+    return str(v or "").strip()
+
 def ask_claude(weather, alerts, raw_headlines, birthdays, history, birds):
     prompt = f"""You are the editor of The Berno Bugle, a one-screen wall newspaper
 for the Berno family in Chevy Chase, Washington DC: Charley (long-horizon value
@@ -206,14 +213,17 @@ ON THIS DATE per Wikipedia (choose from these ONLY): {json.dumps(history)}
 BIRDS reported to eBird within ~5 miles this past week (real sightings; may be empty): {json.dumps(birds)}
 THE GROUNDS at the family's house (may be sparse): {json.dumps(MANIFEST)}
 
-Return ONLY a JSON object, no markdown fences:
+Return ONLY a JSON object, no markdown fences. The fields long_view, teddy,
+and grounds must be PLAIN STRINGS, never nested objects:
 - quote: {{text, attr}} — PUBLIC DOMAIN only (scripture, Aurelius, Seneca,
   Kierkegaard, Thoreau, founders' letters), under 20 words, fitting the day
 - weather: {{grade, verdict, editorial}} — grade the DAY'S USABILITY A-F for a
   family with a garden, a dog, and a small son (A glorious, F stay in);
-  verdict is a short punchy line; editorial one practical sentence. If NWS
-  alerts exist, fold their substance into verdict or editorial using the
-  official facts (event name, timing) — do not soften or embellish them.
+  verdict is a short punchy line; editorial is ONE FACTUAL sentence — numbers,
+  timing, official alert wording only (e.g. "Heat advisory to 8pm, heat index
+  107, storms in the evening round"). Never activity advice, never name family
+  members or pets anywhere in the weather section. If NWS alerts exist, use
+  their official facts — do not soften or embellish them.
 - headlines: {{dc: [{{head, line}} x2], america: [...x2], world: [...x2]}} —
   bold 2-4 word head + one plain sentence rewritten in your own words; use
   only that desk's items. THE DISTRICT: strongly prefer stories about upper-NW
@@ -227,7 +237,7 @@ Return ONLY a JSON object, no markdown fences:
 - long_view: pick ONE event from ON THIS DATE — bias institutions, builders,
   and ideas that lasted; 2-3 sentences; end with the lesson, lightly. Never
   use an event that is not on the list.
-- teddy: one delightful true fact for a small boy, one sentence
+- teddy: one delightful true fact for a small boy, one sentence, under 25 words
 - grounds: a naturalist's two-sentence pulse (three only when the season
   insists) on the yard and the neighborhood's green places: what to watch
   for, what should be blooming or fading, which of the listed birds might
@@ -238,48 +248,3 @@ Return ONLY a JSON object, no markdown fences:
 """
     last_err = None
     for attempt in range(3):  # one bad response must not kill the edition
-        try:
-            r = requests.post("https://api.anthropic.com/v1/messages",
-                headers={"x-api-key": API_KEY, "anthropic-version": "2023-06-01",
-                         "content-type": "application/json"},
-                json=dict(model=MODEL, max_tokens=2200,
-                          messages=[dict(role="user", content=prompt)]), timeout=180)
-            r.raise_for_status()
-            text = "".join(b["text"] for b in r.json()["content"] if b["type"] == "text")
-            return json.loads(text.strip().removeprefix("```json").removesuffix("```").strip())
-        except Exception as e:
-            last_err = e
-            print(f"Editor flubbed attempt {attempt + 1}: {e}")
-    raise last_err
-
-# ---------------- press ----------------
-def main():
-    weather = get_weather()
-    birthdays = get_birthdays()
-    ed = ask_claude(weather, get_alerts(), get_headlines(), birthdays,
-                    get_history(), get_birds())
-
-    weather.update(ed["weather"])
-    data = dict(date_line=DATE_LINE, volume=roman(VOLUME), quote=ed["quote"],
-                weather=weather, birthdays=birthdays,
-                headlines=ed["headlines"], long_view=ed["long_view"],
-                teddy=ed["teddy"], grounds=ed.get("grounds", ""))
-
-    env = Environment(loader=FileSystemLoader(str(HERE)))
-    html = env.get_template("trmnl_template.html").render(**data)
-    HTML(string=html, base_url=str(HERE)).write_pdf(str(HERE / "bugle.pdf"))
-    subprocess.run(["pdftoppm", "-png", "-r", "96", "-gray", "-singlefile",
-                    "bugle.pdf", "latest"], check=True, cwd=HERE)
-
-    # verify the one-screen contract before shipping
-    dims = subprocess.run(["identify", "-format", "%wx%h", "latest.png"],
-                          capture_output=True, text=True, cwd=HERE).stdout
-    assert dims == "1872x1404", f"Render broke the contract: {dims}"
-
-    archive = HERE / "archive" / f"bugle_{NOW:%Y-%m-%d}.png"
-    archive.write_bytes((HERE / "latest.png").read_bytes())
-    (HERE / "bugle.pdf").unlink()
-    print(f"Edition No. {VOLUME} ({dims}) ready.")
-
-if __name__ == "__main__":
-    sys.exit(main())
