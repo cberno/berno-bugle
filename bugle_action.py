@@ -37,7 +37,7 @@ UA = {"User-Agent": "BernoBugle/1.0 (github.com/cberno/berno-bugle)"}
 
 # Each desk pulls several . A dead feed is reported in the paper,
 # never papered over. District  are ordered most-local-first.
- = {
+= {
     "dc": [
         "https://www.popville.com/feed/",
         "https://www.foresthillsconnection.com/feed/",
