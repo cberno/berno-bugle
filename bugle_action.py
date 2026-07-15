@@ -35,9 +35,9 @@ BDAY_ICS_URL = os.environ.get("BUGLE_BIRTHDAYS_ICS_URL", "")
 EBIRD_KEY = os.environ.get("EBIRD_API_KEY", "")
 UA = {"User-Agent": "BernoBugle/1.0 (github.com/cberno/berno-bugle)"}
 
-# Each desk pulls several . A dead feed is reported in the paper,
-# never papered over. District  are ordered most-local-first.
-= {
+# Each desk pulls several feeds. A dead feed is reported in the paper,
+# never papered over. District feeds are ordered most-local-first.
+FEEDS = {
     "dc": [
         "https://www.popville.com/feed/",
         "https://www.foresthillsconnection.com/feed/",
