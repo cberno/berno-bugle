@@ -35,21 +35,13 @@ BDAY_ICS_URL = os.environ.get("BUGLE_BIRTHDAYS_ICS_URL", "")
 EBIRD_KEY = os.environ.get("EBIRD_API_KEY", "")
 UA = {"User-Agent": "BernoBugle/1.0 (github.com/cberno/berno-bugle)"}
 
-# Each desk pulls several feeds. A dead feed is reported in the paper,
-# never papered over. District feeds are ordered most-local-first.
-FEEDS = {
+# Each desk pulls several . A dead feed is reported in the paper,
+# never papered over. District  are ordered most-local-first.
+ = {
     "dc": [
         "https://www.popville.com/feed/",
         "https://www.foresthillsconnection.com/feed/",
         "https://wtop.com/feed/",
-    ],
-    "america": [
-        "https://feeds.npr.org/1001/rss.xml",
-        "https://www.pbs.org/newshour/feed/",
-    ],
-    "world": [
-        "http://feeds.bbci.co.uk/news/world/rss.xml",
-        "https://www.theguardian.com/world/rss",
     ],
 }
 
@@ -224,27 +216,24 @@ and grounds must be PLAIN STRINGS, never nested objects:
   107, storms in the evening round"). Never activity advice, never name family
   members or pets anywhere in the weather section. If NWS alerts exist, use
   their official facts — do not soften or embellish them.
-- headlines: {{dc: [{{head, line}} x2], america: [...x2], world: [...x2]}} —
-  bold 2-4 word head + one plain sentence rewritten in your own words; use
-  only that desk's items. THE DISTRICT: strongly prefer stories about upper-NW
-  neighborhoods (Tenleytown, Chevy Chase DC, Friendship Heights, AU Park,
-  Cleveland Park, Van Ness) or citywide stories that touch daily life there;
-  popville.com and foresthillsconnection.com items outrank wire copy when
-  they carry real news. AMERICA / WORLD: prioritize signal — markets, banking,
-  small business, institutions; one wildcard allowed across the paper. If a
-  desk's items are empty, output exactly one entry for it: head "Wire down",
+- headlines: {{dc: [{{head, line}} x3]}} — bold 2-4 word head + ONE sentence
+  under 16 words, rewritten in your own words, from the dc items only.
+  Strongly prefer Ward 3 and upper-NW: Friendship Heights, Tenleytown,
+  Chevy Chase DC, AU Park, Cleveland Park, Van Ness, Forest Hills; then
+  citywide stories that touch daily life there. popville.com and
+  foresthillsconnection.com outrank wire copy when they carry real news.
+  If the items are empty, output exactly one entry: head "Wire down",
   line plainly naming the failed feeds.
 - long_view: pick ONE event from ON THIS DATE — bias institutions, builders,
-  and ideas that lasted; 2-3 sentences; end with the lesson, lightly. Never
+  and ideas that lasted; ONE or two sentences, never more; Never
   use an event that is not on the list.
-- teddy: one delightful true fact for a small boy, one sentence, under 25 words
-- grounds: a naturalist's two-sentence pulse (three only when the season
-  insists) on the yard and the neighborhood's green places: what to watch
-  for, what should be blooming or fading, which of the listed birds might
-  turn up at the feeders or overhead. Ground every claim in the date, today's
-  weather, the daylight, the BIRDS list, and THE GROUNDS. Expectation
-  language only ("watch for", "should open") — never claim something was
-  observed at the house. Never chores, never a to-do list.
+- teddy: one delightful true fact for a 3 year old, one sentence, under 25 words
+- grounds: TWO sentences maximum, under 40 words total — a naturalist's
+  pulse on the yard: the single most notable thing blooming or fading now,
+  and one bird from the BIRDS list worth watching for. Ground every claim
+  in the date, weather, and the lists. Expectation language only ("watch
+  for", "should open") — never claim something was observed at the house.
+  Never chores.
 """
     last_err = None
     for attempt in range(3):  # one bad response must not kill the edition
@@ -252,7 +241,7 @@ and grounds must be PLAIN STRINGS, never nested objects:
             r = requests.post("https://api.anthropic.com/v1/messages",
                 headers={"x-api-key": API_KEY, "anthropic-version": "2023-06-01",
                          "content-type": "application/json"},
-                json=dict(model=MODEL, max_tokens=2200,
+                json=dict(model=MODEL, max_tokens=1600,
                           messages=[dict(role="user", content=prompt)]), timeout=180)
             r.raise_for_status()
             text = "".join(b["text"] for b in r.json()["content"] if b["type"] == "text")
@@ -289,7 +278,7 @@ def main():
     # verify the one-screen contract before shipping
     dims = subprocess.run(["identify", "-format", "%wx%h", "latest.png"],
                           capture_output=True, text=True, cwd=HERE).stdout
-    assert dims == "1872x1404", f"Render broke the contract: {dims}"
+    assert dims == "1404x1872", f"Render broke the contract: {dims}"
 
     archive = HERE / "archive" / f"bugle_{NOW:%Y-%m-%d}.png"
     archive.write_bytes((HERE / "latest.png").read_bytes())
