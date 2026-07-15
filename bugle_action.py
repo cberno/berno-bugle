@@ -209,13 +209,24 @@ Return ONLY a JSON object, no markdown fences. The fields long_view, teddy,
 and grounds must be PLAIN STRINGS, never nested objects:
 - quote: {{text, attr}} — PUBLIC DOMAIN only (scripture, Aurelius, Seneca,
   Kierkegaard, Thoreau, founders' letters), under 20 words, fitting the day
-- weather: {{grade, verdict, editorial}} — grade the DAY'S USABILITY A-F for a
-  family with a garden, a dog, and a small son (A glorious, F stay in);
-  verdict is a short punchy line; editorial is ONE FACTUAL sentence — numbers,
-  timing, official alert wording only (e.g. "Heat advisory to 8pm, heat index
-  107, storms in the evening round"). Never activity advice, never name family
-  members or pets anywhere in the weather section. If NWS alerts exist, use
-  their official facts — do not soften or embellish them.
+- weather: {{grade, verdict, editorial}} — grade the DAY'S USABILITY for a
+  family with a young son and a dog, on this fixed rubric:
+  A = high 55-85, dry, sun, calm, no alerts (rare; cancel-plans weather).
+  B = good with one flaw: warm to 92, a brief shower window, or gray but
+  dry; most of the day usable.
+  C = usable with effort: 92-97 or sticky-humid, on-and-off rain, or raw
+  cold; mornings and evenings work, midday does not.
+  D = hostile most of the day: heat index 100-104, rain most hours, or an
+  NWS advisory; only short usable windows.
+  F = dangerous or day-killing: an NWS WARNING, heat index 105+, severe
+  weather or downpour most of the day; a handful per year.
+  Most days are B or C; when torn between grades, grade higher. Rain alone
+  is never F; an advisory caps at D; only a warning-level day earns F.
+  Plus/minus shading welcome. verdict is a short punchy line; editorial is
+  ONE FACTUAL sentence — numbers, timing, official alert wording only.
+  Never activity advice, never name family members or pets anywhere in
+  the weather section. If NWS alerts exist, use their official facts —
+  do not soften or embellish them.
 - headlines: {{dc: [{{head, line}} x3]}} — bold 2-4 word head + ONE sentence
   under 16 words, rewritten in your own words, from the dc items only.
   Strongly prefer Ward 3 and upper-NW: Friendship Heights, Tenleytown,
