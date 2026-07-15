@@ -2,9 +2,10 @@ name: The Berno Bugle
 
 on:
   schedule:
-    - cron: "45 9 * * *"    # 5:45am EDT — the real run
-    - cron: "45 10 * * *"   # backup — fires only if the first didn't print
-  workflow_dispatch:         # the "Run workflow" button — always prints
+    - cron: "15 6 * * *"   # 4:15am EDT — the real run
+    - cron: "0 7 * * *"    # 5:00am — insurance if GitHub drifted
+    - cron: "45 7 * * *"   # 5:45am — last resort
+  workflow_dispatch:
 
 permissions:
   contents: write
