@@ -207,8 +207,8 @@ THE GROUNDS at the family's house (may be sparse): {json.dumps(MANIFEST)}
 
 Return ONLY a JSON object, no markdown fences. The fields long_view, teddy,
 and grounds must be PLAIN STRINGS, never nested objects:
-- quote: {{text, attr}} — PUBLIC DOMAIN only (scripture, Aurelius, Seneca,
-  Kierkegaard, Thoreau, founders' letters), under 20 words, fitting the day
+- quote: {{text, attr}} — Borges, Kierkegaard, Matt Levine, Melville, Spinoza, Augustine, Alexander Hamilton, Thomas Jefferson, 
+  James Madison, George Washington, Benjamin Franklin, Tolstoy, Dostoevsky, Steinbeck, Poe, and related, under 20 words, fitting the day
 - weather: {{grade, verdict, editorial}} — grade the DAY'S USABILITY for a
   family with a young son and a dog, on this fixed rubric:
   A = high 55-85, dry, sun, calm, no alerts (rare; cancel-plans weather).
